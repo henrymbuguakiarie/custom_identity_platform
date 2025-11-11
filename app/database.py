@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic_settings import BaseSettings
 
-DATABASE_URL = "postgresql+psycopg2://user:password@localhost:5432/database_name"
+DATABASE_URL = "postgresql+psycopg2://postgres:password@localhost:5432/identity_db"
 
 class Settings(BaseSettings):
     database_url: str = DATABASE_URL
