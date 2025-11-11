@@ -70,19 +70,47 @@ poetry shell
    cd custom_identity_platform
    ```
 
-1. **Configure environment**
+1. **Configure environment using `.env`**
 
-   Edit `app/config.py` or `.env` to include:
+   We now use a `.env` file for all secrets and configuration.
+   Start by copying the example template:
 
-   ```python
-   secret_key = "your_secret_key"
-   algorithm = "RS256"
-   access_token_expire_minutes = 30
-   refresh_token_expire_days = 7
-   database_url = "postgresql+psycopg2://postgres:password@localhost:5432/identity_db"
-   private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-   public_key = "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+   ```bash
+   cp .env.example .env
    ```
+
+   Then edit `.env` to include your actual values:
+
+   ```dotenv
+   SECRET_KEY=your_secret_key
+   ALGORITHM=RS256
+   ACCESS_TOKEN_EXPIRE_MINUTES=30
+   REFRESH_TOKEN_EXPIRE_DAYS=7
+   SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/identity_db
+   PRIVATE_KEY_PATH=/path/to/private_key.pem
+   PUBLIC_KEY_PATH=/path/to/public_key.pem
+   KEY_ID=rsa1
+   ```
+
+   **Notes:**
+
+   * `SQLALCHEMY_DATABASE_URL` is your database connection string.
+   * `PRIVATE_KEY_PATH` and `PUBLIC_KEY_PATH` point to your RSA key files.
+   * `KEY_ID` should match the `kid` used in your JWKS.
+
+1. **Generate RSA Key Pair**
+
+   You can generate a 2048-bit RSA key pair using OpenSSL:
+
+   ```bash
+   # Generate private key
+   openssl genrsa -out private_key.pem 2048
+
+   # Generate corresponding public key
+   openssl rsa -in private_key.pem -pubout -out public_key.pem
+   ```
+
+   Place these files at the paths specified in your `.env` file (`PRIVATE_KEY_PATH` and `PUBLIC_KEY_PATH`).
 
 1. **Run Alembic migrations**
 
