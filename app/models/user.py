@@ -10,6 +10,9 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    full_name = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

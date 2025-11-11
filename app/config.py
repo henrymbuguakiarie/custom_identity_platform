@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int
     database_url: str
     sqlalchemy_url: str
+    issuer: str
+    default_aud: str
     key_id: str
 
     private_key_path: str

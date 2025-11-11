@@ -70,6 +70,21 @@ def create_refresh_token(user: User, db: Session, refresh_token_expiry: int):
     db.refresh(session)
     return refresh_token
 
+def create_id_token(user, expires_delta: timedelta | None = None, aud: str | None = None):
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    role_names = [role.name for role in user.roles]
+    to_encode = {
+        "sub": str(user.id),
+        "name": user.full_name,
+        "email": user.email,
+        "roles": role_names,          # custom claim
+        "iss": settings.issuer,
+        "aud": aud or settings.default_aud,
+        "iat": datetime.utcnow(),
+        "exp": expire
+    }
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
 def verify_refresh_token(token: str, db: Session) -> Optional[User]:
     session = db.query(Session).filter(
         Session.refresh_token == token,

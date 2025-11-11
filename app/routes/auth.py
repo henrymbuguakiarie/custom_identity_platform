@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.crud import user_crud
-from app.core.security import create_access_token, decode_access_token
 from app.config import settings
 from app.schemas.user import UserCreate, UserOut, RefreshTokenRequest
 from app.core.dependencies import get_current_user
-from app.core.security import create_session, create_access_token, verify_access_token
+from app.core.security import create_session, create_access_token, create_id_token
 from app.models.rbac import UserSession
 from app.models.user import User
 
@@ -25,20 +24,26 @@ def get_db():
 
 @router.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Authenticate user
     user = user_crud.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
+    # Token expirations
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     refresh_token_expires = settings.refresh_token_expire_days
 
     # Create session (with refresh token)
     session = create_session(user, db, settings.access_token_expire_minutes, refresh_token_expires)
 
+    # Generate access token
     access_token = create_access_token(
         {"sub": user.username, "roles": [role.name for role in user.roles]},
         expires_delta=access_token_expires
     )
+
+    # Generate ID token (new)
+    id_token = create_id_token(user, expires_delta=access_token_expires)
 
     # Link access token to session
     session.session_token = access_token
@@ -47,9 +52,9 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     return {
         "access_token": access_token,
         "refresh_token": session.refresh_token,
+        "id_token": id_token,
         "token_type": "bearer",
     }
-
 
 # --- Refresh Token Endpoint ---
 @router.post("/token/refresh")

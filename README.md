@@ -256,6 +256,119 @@ Each JWT now carries user roles and claims for RBAC and `/userinfo`.
 
 ---
 
+## 🪪 ID Token Support (OpenID Connect)
+
+This platform now supports **ID Tokens** — short-lived JWTs that prove the user's identity to clients in **OpenID Connect (OIDC)**–compatible flows.
+
+### 🔍 What is an ID Token?
+
+An **ID Token** is a JSON Web Token (JWT) that contains information about the authenticated user.  
+It’s typically issued alongside the **Access Token** and used by clients (like web or mobile apps) to verify the user’s identity.
+
+### 📦 Standard Claims
+
+Each ID token contains the following claims:
+
+| Claim | Description |
+|-------|--------------|
+| `sub` | Subject — unique user identifier (usually the user ID) |
+| `name` | User’s full name |
+| `email` | User’s email address |
+| `roles` | Custom claim — list of roles assigned to the user |
+| `iss` | Issuer — your platform’s base URL |
+| `aud` | Audience — the client ID |
+| `iat` | Issued-at timestamp |
+| `exp` | Expiration time |
+| `auth_time` | (Optional) Time the user authenticated |
+
+### ⏱️ Lifetime
+
+ID tokens are **short-lived** (typically 15–30 minutes) to reduce risk if intercepted.
+
+---
+
+### 🧩 Example Response
+
+After logging in through `/auth/token`, you’ll now receive **three tokens**:
+
+```json
+{
+  "access_token": "<JWT_ACCESS_TOKEN>",
+  "refresh_token": "<JWT_REFRESH_TOKEN>",
+  "id_token": "<JWT_ID_TOKEN>",
+  "token_type": "bearer"
+}
+````
+
+### 🧠 Example Decoded ID Token
+
+```json
+{
+  "sub": "1",
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "roles": ["User", "Admin"],
+  "iss": "http://localhost:8000",
+  "aud": "your-client-id",
+  "iat": 1731449872,
+  "exp": 1731450872
+}
+```
+
+---
+
+### 🧾 Decoding and Verifying the ID Token
+
+#### 1️⃣ Decode (without verification)
+
+You can safely inspect an ID token using `python-jose`:
+
+```python
+from jose import jwt
+
+token = "<your_id_token_here>"
+decoded = jwt.get_unverified_claims(token)
+print(decoded)
+```
+
+#### 2️⃣ Decode (with verification)
+
+If you want to verify the signature and audience:
+
+```python
+from jose import jwt
+from app.config import settings
+
+decoded = jwt.decode(
+    token,
+    settings.public_key,          # or settings.secret_key if using HS256
+    algorithms=[settings.algorithm],
+    audience=settings.default_aud,
+)
+print(decoded)
+```
+
+#### 3️⃣ View in Browser
+
+You can also decode it visually using [https://jwt.io](https://jwt.io)
+Paste your token and the corresponding public or secret key.
+
+---
+
+### ✅ ID Token Use Cases
+
+* Verifying user identity on the client (e.g., web or mobile app)
+* Displaying user information without another API call
+* Integrating with OIDC-compatible clients
+
+---
+
+> ⚠️ **Security Note:**
+> Never store ID tokens in insecure storage (like localStorage).
+> Treat them like access tokens — store securely and refresh often.
+
+---
+
 ## ▶️ Running the Application
 
 ```bash
