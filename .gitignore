@@ -1,0 +1,37 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Alembic cache (but keep migration scripts tracked)
+alembic/__pycache__/
+alembic/versions/__pycache__/
+
+# App caches
+app/**/__pycache__/
+
+# Tests caches
+tests/__pycache__/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Poetry lock (ignored as requested)
+poetry.lock
+
+# Environment variables
+*.env
+.env.*
+
+# Logs
+*.log
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
