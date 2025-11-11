@@ -1,9 +1,3 @@
-Perfect — since your identity platform now supports **OpenID Connect–style claims** and **JWKS key discovery**, your README should clearly reflect those.
-
-Here’s an updated version that adds both `/auth/userinfo` and `/.well-known/jwks.json` sections, explains their purpose, and updates the API table accordingly.
-
----
-
 # Custom Identity Platform
 
 A **Custom Identity Platform** built with **FastAPI**, **SQLAlchemy**, and **PostgreSQL**, providing secure authentication and authorization with **OAuth2**, **JWT access & refresh tokens**, and **Role-Based Access Control (RBAC)**.
