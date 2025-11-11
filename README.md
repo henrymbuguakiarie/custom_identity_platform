@@ -34,7 +34,7 @@ This platform is designed for production-ready identity management — featuring
 * ✅ Secure token revocation and expiration policies
 * ✅ PostgreSQL + Alembic for migrations
 * ✅ Clean modular FastAPI architecture
-* ✅ Configuration management via Pydantic Settings
+* ✅ Configuration management via `.env` and Pydantic Settings
 
 ---
 
@@ -70,59 +70,53 @@ poetry shell
    cd custom_identity_platform
    ```
 
-1. **Configure environment using `.env`**
+2. **Configure environment**
 
-   We now use a `.env` file for all secrets and configuration.
-   Start by copying the example template:
+   Copy the example `.env` file and update it with your configuration:
 
    ```bash
    cp .env.example .env
    ```
 
-   Then edit `.env` to include your actual values:
+   Edit `.env`:
 
-   ```dotenv
+   ```env
    SECRET_KEY=your_secret_key
    ALGORITHM=RS256
    ACCESS_TOKEN_EXPIRE_MINUTES=30
    REFRESH_TOKEN_EXPIRE_DAYS=7
-   SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/identity_db
+   SQLALCHEMY_URL=postgresql+psycopg2://postgres:password@localhost:5432/identity_db
    PRIVATE_KEY_PATH=/path/to/private_key.pem
    PUBLIC_KEY_PATH=/path/to/public_key.pem
-   KEY_ID=rsa1
    ```
 
-   **Notes:**
-
-   * `SQLALCHEMY_DATABASE_URL` is your database connection string.
-   * `PRIVATE_KEY_PATH` and `PUBLIC_KEY_PATH` point to your RSA key files.
-   * `KEY_ID` should match the `kid` used in your JWKS.
-
-1. **Generate RSA Key Pair**
-
-   You can generate a 2048-bit RSA key pair using OpenSSL:
+3. **Generate RSA Key Pair**
 
    ```bash
-   # Generate private key
+   # Private key
    openssl genrsa -out private_key.pem 2048
 
-   # Generate corresponding public key
+   # Public key
    openssl rsa -in private_key.pem -pubout -out public_key.pem
    ```
 
-   Place these files at the paths specified in your `.env` file (`PRIVATE_KEY_PATH` and `PUBLIC_KEY_PATH`).
-
-1. **Run Alembic migrations**
+4. **Run Alembic migrations**
 
    ```bash
    poetry run alembic upgrade head
    ```
 
+5. **Seed RBAC roles, permissions, and admin user**
+
+   ```bash
+   python app/seeds/seed_rbac.py
+   ```
+
+   This ensures your roles, permissions, and default admin user are initialized.
+
 ---
 
 ## 🔑 OAuth2 + JWT + Refresh Token Flow
-
-This platform implements a **complete token lifecycle** for secure user authentication.
 
 ### 1. Login and Token Issuance
 
@@ -146,7 +140,7 @@ curl -X POST "http://127.0.0.1:8000/auth/token" \
 ### 2. Accessing Protected Endpoints
 
 ```bash
-curl -H "Authorization: Bearer <access_token>" \
+curl -H "Authorization: Bearer <ACCESS_TOKEN>" \
 http://127.0.0.1:8000/auth/me
 ```
 
@@ -181,22 +175,18 @@ Refresh tokens are stored in the database and can be revoked by setting `revoked
 
 ### 1. `/auth/userinfo` — Retrieve User Claims
 
-This endpoint returns standard OpenID Connect–style claims about the authenticated user.
-
-**Endpoint:**
-
-```
+```bash
 GET /auth/userinfo
 ```
 
-**Example:**
+Example:
 
 ```bash
 curl -H "Authorization: Bearer <ACCESS_TOKEN>" \
 http://127.0.0.1:8000/auth/userinfo
 ```
 
-**Response:**
+Response:
 
 ```json
 {
@@ -207,30 +197,21 @@ http://127.0.0.1:8000/auth/userinfo
 }
 ```
 
-**Purpose:**
-
-* Enables clients to retrieve user profile and claims using the access token.
-* Mimics the `/userinfo` endpoint in OpenID Connect.
-
 ---
 
 ### 2. `/.well-known/jwks.json` — Public Key Discovery
 
-This endpoint exposes your **JSON Web Key Set (JWKS)** used to verify JWT signatures.
-
-**Endpoint:**
-
-```
+```bash
 GET /.well-known/jwks.json
 ```
 
-**Example:**
+Example:
 
 ```bash
 curl http://127.0.0.1:8000/.well-known/jwks.json | jq
 ```
 
-**Response:**
+Response:
 
 ```json
 {
@@ -240,24 +221,38 @@ curl http://127.0.0.1:8000/.well-known/jwks.json | jq
       "use": "sig",
       "kid": "rsa1",
       "alg": "RS256",
-      "n": "sM7f2u8YqM0...",
+      "n": "...",
       "e": "AQAB"
     }
   ]
 }
 ```
 
-**Purpose:**
-
-* Allows external clients or services to validate tokens signed by your platform.
-* Conforms to OpenID Connect Discovery specifications.
-
 ---
 
 ## 🧱 RBAC Setup
 
-Follow the same steps to seed roles, assign permissions, and protect routes.
-Each JWT now carries user roles and claims for both RBAC and `/userinfo`.
+Seed roles, permissions, and the admin user:
+
+```bash
+python app/seeds/seed_rbac.py
+```
+
+Protect endpoints by role:
+
+```python
+from app.utils.auth import role_required
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/admin/dashboard")
+@role_required(["Admin"])
+def admin_dashboard():
+    return {"message": "Welcome, Admin! Access granted."}
+```
+
+Each JWT now carries user roles and claims for RBAC and `/userinfo`.
 
 ---
 
@@ -300,3 +295,5 @@ Access:
 | UserInfo Endpoint         | ✅ OIDC-style claims via `/auth/userinfo` |
 | JWKS Endpoint             | ✅ Public key discovery for JWTs          |
 | Token Revocation          | ✅ Supported                              |
+
+---
