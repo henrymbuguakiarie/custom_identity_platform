@@ -25,16 +25,16 @@ This platform is designed for production-ready identity management — featuring
 
 ## 🚀 Features
 
-✅ User registration with hashed passwords (bcrypt)
-✅ OAuth2 Password Flow with JWT access tokens
-✅ Refresh token rotation with database-backed session management
-✅ Role-Based Access Control (RBAC) for endpoint protection
-✅ **OpenID Connect–compatible `/userinfo` endpoint**
-✅ **JWKS public key discovery endpoint (`/.well-known/jwks.json`)**
-✅ Secure token revocation and expiration policies
-✅ PostgreSQL + Alembic for migrations
-✅ Clean modular FastAPI architecture
-✅ Configuration management via Pydantic Settings
+* ✅ User registration with hashed passwords (bcrypt)
+* ✅ OAuth2 Password Flow with JWT access tokens
+* ✅ Refresh token rotation with database-backed session management
+* ✅ Role-Based Access Control (RBAC) for endpoint protection
+* ✅ **OpenID Connect–compatible `/userinfo` endpoint**
+* ✅ **JWKS public key discovery endpoint (`/.well-known/jwks.json`)**
+* ✅ Secure token revocation and expiration policies
+* ✅ PostgreSQL + Alembic for migrations
+* ✅ Clean modular FastAPI architecture
+* ✅ Configuration management via Pydantic Settings
 
 ---
 
