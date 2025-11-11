@@ -68,7 +68,7 @@ class Permission(Base):
             raise ValueError("Permission name can only contain alphanumeric characters, underscores, and dots.")
         return value
 
-class Session(Base):
+class UserSession(Base):
     __tablename__ = 'sessions'
 
     id = Column(Integer, primary_key=True)
@@ -78,7 +78,7 @@ class Session(Base):
     is_active = Column(Boolean, default=True)
     revoked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime)
+    expires_at = Column(DateTime) # Access token expiry
 
     user = relationship('User', back_populates='sessions')
 

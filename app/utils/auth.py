@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.models.rbac import Session as UserSession
+from app.models.rbac import UserSession
 from app.database import SessionLocal
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")

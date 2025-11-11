@@ -1,8 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.config import settings
+from app.models.rbac import UserSession
+from app.models.user import User
+from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -32,3 +36,46 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+# --- Session Management ---
+def create_session(user: User, db: Session, access_token_expiry: int, refresh_token_expiry: int):
+    access_token = create_access_token({"sub": user.username}, expires_delta=timedelta(minutes=access_token_expiry))
+    refresh_token = secrets.token_urlsafe(32)
+
+    session = UserSession(
+        user_id=user.id,
+        session_token=access_token,
+        refresh_token=refresh_token,
+        expires_at=datetime.utcnow() + timedelta(minutes=access_token_expiry),
+        is_active=True,
+        revoked=False
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+def create_refresh_token(user: User, db: Session, refresh_token_expiry: int):
+    refresh_token = secrets.token_urlsafe(64)
+    session = UserSession(
+        user_id=user.id,
+        session_token=None,  # created later in login
+        refresh_token=refresh_token,
+        expires_at=datetime.utcnow() + timedelta(days=refresh_token_expiry),
+        is_active=True,
+        revoked=False
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return refresh_token
+
+def verify_refresh_token(token: str, db: Session) -> Optional[User]:
+    session = db.query(Session).filter(
+        Session.refresh_token == token,
+        Session.revoked == False,
+        Session.is_active == True
+    ).first()
+    if not session or session.expires_at < datetime.utcnow():
+        return None
+    return session.user

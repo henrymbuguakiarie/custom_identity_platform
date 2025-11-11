@@ -28,6 +28,6 @@ def delete_user(db: Session, user: User):
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_username(db, username)
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(password, user.password_hash):
         return None
     return user 
