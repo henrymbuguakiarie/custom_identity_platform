@@ -1,14 +1,32 @@
+# app/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from pydantic_settings import BaseSettings
+from app.config import settings  # Load centralized settings
 
-DATABASE_URL = "postgresql+psycopg2://postgres:paswword@localhost:5432/identity_db"
+# --- SQLAlchemy Engine ---
+# Create the database engine using the URL from settings
+engine = create_engine(
+    settings.database_url,
+    pool_pre_ping=True,  # Optional: prevent stale connections
+)
 
-class Settings(BaseSettings):
-    database_url: str = DATABASE_URL
-settings = Settings()
+# --- Session Factory ---
+# SessionLocal is used to create database sessions
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
-engine = create_engine(settings.database_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# --- Base Class for Models ---
 Base = declarative_base()
+
+# --- Dependency for FastAPI ---
+# Optional helper function for FastAPI dependency injection
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

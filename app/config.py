@@ -2,21 +2,18 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 from pydantic import PrivateAttr
 
-
 class Settings(BaseSettings):
-    secret_key: str = "your_secret_key"
-    algorithm: str = "HS256"
-     # Token expiration times
-    access_token_expire_minutes: int = 30   # Access token lifetime
-    refresh_token_expire_days: int = 7      # Refresh token lifetime (new)
-    database_url: str = "postgresql+psycopg2://postgres:paswword@localhost:5432/identity_db"
-    key_id: str = "1"
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
+    refresh_token_expire_days: int
+    database_url: str
+    sqlalchemy_url: str
+    key_id: str
 
-        # Optional environment-based fields
-    private_key_path: str = "/Users/henrymbugua/Documents/01_Microsft_Work/15_personal_learning/identity-platform/private_key.pem"
-    public_key_path: str = "/Users/henrymbugua/Documents/01_Microsft_Work/15_personal_learning/identity-platform/public_key.pem"
+    private_key_path: str
+    public_key_path: str
 
-    # Private attributes (not validated by Pydantic)
     _private_key: str = PrivateAttr(default=None)
     _public_key: str = PrivateAttr(default=None)
 
@@ -48,7 +45,7 @@ class Settings(BaseSettings):
         return self._public_key
 
     class Config:
-        env_file = ".env"  # optional, useful if you want to move secrets here later
-
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 settings = Settings()
