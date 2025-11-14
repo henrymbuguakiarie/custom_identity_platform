@@ -499,15 +499,16 @@ Access:
 
 ## 📚 API Endpoints
 
-| Endpoint                 | Method | Description                         |
-| ------------------------ | ------ | ----------------------------------- |
-| `/auth/register`         | POST   | Register a new user                 |
-| `/auth/token`            | POST   | Get access + refresh tokens         |
-| `/auth/token/refresh`    | POST   | Refresh tokens                      |
-| `/auth/me`               | GET    | Get current authenticated user      |
-| `/auth/userinfo`         | GET    | Get user claims (OpenID-style)      |
-| `/.well-known/jwks.json` | GET    | Retrieve public signing keys (JWKS) |
-| `/admin/dashboard`       | GET    | Admin-only route (RBAC protected)   |
+| Endpoint                 | Method   | Description                       |
+| ------------------------ | -------- | --------------------------------- |
+| `/auth/register`         | POST     | Register a new user               |
+| `/auth/token`            | POST     | Get access + refresh + ID tokens  |
+| `/auth/token/refresh`    | POST     | Refresh tokens                    |
+| `/auth/authorize`        | GET/POST | Authorization Code Flow (PKCE)    |
+| `/auth/me`               | GET      | Get current authenticated user    |
+| `/auth/userinfo`         | GET      | Get user claims (OpenID-style)    |
+| `/.well-known/jwks.json` | GET      | Retrieve public signing keys      |
+| `/admin/dashboard`       | GET      | Admin-only route (RBAC protected) |
 
 ---
 
