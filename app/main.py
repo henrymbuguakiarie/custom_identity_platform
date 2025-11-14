@@ -1,8 +1,10 @@
 from fastapi import FastAPI
-from app.routes import auth, admin, jwks
+from app.routes import auth, admin, jwks, authorize, callback
 
 app = FastAPI(title="Custom Identity Platform API", version="0.1.0")
 
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(jwks.router)
+app.include_router(authorize.router)
+app.include_router(callback.router)

@@ -369,6 +369,121 @@ Paste your token and the corresponding public or secret key.
 
 ---
 
+## 🔑 Authorization Code Flow with PKCE
+
+This platform supports **Authorization Code Flow with PKCE**, enabling SPAs and mobile apps to securely authenticate without exposing client secrets.
+
+### Step 1: Request Authorization Code
+
+Client sends a request to `/auth/authorize` with:
+
+* `response_type=code`
+* `client_id=<CLIENT_ID>`
+* `redirect_uri=http://127.0.0.1:8000/callback`
+* `scope=openid profile email`
+* `state=xyz` (for CSRF protection)
+* `code_challenge=<CODE_CHALLENGE>` (PKCE)
+* `code_challenge_method=S256`
+
+> If the user is not authenticated, the server shows a login form.
+> After successful login, a temporary authorization code is generated and linked to the user, PKCE code challenge, redirect URI, and client ID.
+
+Server responds with:
+
+```
+HTTP/1.1 302 Found
+Location: http://127.0.0.1:8000/callback?code=<AUTH_CODE>&state=xyz
+```
+
+---
+
+### Step 2: Exchange Authorization Code for Tokens
+
+Client sends a POST request to `/auth/token` with:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/auth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "code=<AUTH_CODE>" \
+  -d "redirect_uri=http://127.0.0.1:8000/callback" \
+  -d "client_id=<CLIENT_ID>" \
+  -d "code_verifier=<CODE_VERIFIER>"
+```
+
+Server validates:
+
+1. `code_verifier` against the stored `code_challenge` (PKCE validation)
+2. That the `code` matches the `client_id` and `redirect_uri`
+3. That the code is unused and not expired
+
+Returns:
+
+```json
+{
+  "access_token": "<ACCESS_TOKEN>",
+  "refresh_token": "<REFRESH_TOKEN>",
+  "id_token": "<ID_TOKEN>",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+---
+
+### Step 3: PKCE Validation
+
+The server verifies the code using:
+
+```python
+verify_code_challenge(code_verifier, code_challenge, method="S256")
+```
+
+---
+
+## 🧪 Testing Authorization Code Flow + PKCE with Curl
+
+1. **Generate PKCE challenge and verifier**
+
+```python
+import secrets, hashlib, base64
+
+code_verifier = secrets.token_urlsafe(64)
+code_challenge = base64.urlsafe_b64encode(
+    hashlib.sha256(code_verifier.encode()).digest()
+).decode().rstrip("=")
+
+print("Code Verifier:", code_verifier)
+print("Code Challenge:", code_challenge)
+```
+
+1. **Request authorization code**
+
+```bash
+curl -v "http://127.0.0.1:8000/auth/authorize?response_type=code&client_id=<CLIENT_ID>&redirect_uri=http://127.0.0.1:8000/callback&scope=openid%20profile%20email&state=xyz&code_challenge=<CODE_CHALLENGE>&code_challenge_method=S256&username=admin&password=adminpass"
+```
+
+1. **Exchange code for tokens**
+
+```bash
+curl -X POST "http://127.0.0.1:8000/auth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "code=<AUTH_CODE>" \
+  -d "redirect_uri=http://127.0.0.1:8000/callback" \
+  -d "client_id=<CLIENT_ID>" \
+  -d "code_verifier=<CODE_VERIFIER>"
+```
+
+---
+
+### ✅ Notes
+
+* PKCE ensures clients do **not need to store secrets** for public apps
+* Authorization codes are **short-lived** and **single-use**
+* ID tokens are returned alongside access tokens for OIDC compatibility
+
+
 ## ▶️ Running the Application
 
 ```bash
