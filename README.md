@@ -55,13 +55,6 @@ Key dependencies managed by **Poetry**:
 * **pydantic-settings** – environment configuration
 * **python-multipart** – form data handling
 
-Install with:
-
-```bash
-poetry install
-poetry shell
-```
-
 ---
 
 ## ⚙️ Setup
@@ -102,6 +95,11 @@ poetry shell
    # Public key
    openssl rsa -in private_key.pem -pubout -out public_key.pem
    ```
+
+1. **Install dependencies**
+
+   ```bash
+   poetry install
 
 1. **Run Alembic migrations**
 
