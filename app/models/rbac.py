@@ -71,17 +71,17 @@ class Permission(Base):
 class UserSession(Base):
     __tablename__ = 'sessions'
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
-    session_token = Column(String(255), unique=True, nullable=False)
-    refresh_token = Column(String(255), unique=True, nullable=True)
-    is_active = Column(Boolean, default=True)
-    revoked = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime) # Access token expiry
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False, index=True)
+    session_token = Column(String(1024), unique=True, nullable=True)
+    refresh_token_hash = Column(String(128), unique=True, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    revoked = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
 
     user = relationship('User', back_populates='sessions')
 
     __table_args__ = (
-        Index('idx_session_token', 'session_token'),
+        Index('idx_session_refresh_hash', 'refresh_token_hash'),
     )

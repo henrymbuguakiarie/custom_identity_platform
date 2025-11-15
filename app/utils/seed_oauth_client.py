@@ -3,6 +3,7 @@ from app.models.oauth import OAuthClient
 import secrets, json
 
 db = SessionLocal()
+
 client_id = secrets.token_urlsafe(24)
 client = OAuthClient(
     client_id=client_id,
@@ -13,5 +14,10 @@ client = OAuthClient(
 )
 db.add(client)
 db.commit()
-print("client_id:", client_id)
+
+# Save client_id to a JSON file for later use
+with open("oauth_client.json", "w") as f:
+    json.dump({"client_id": client_id}, f, indent=2)
+
+print("Seeded OAuth client_id:", client_id)
 db.close()
