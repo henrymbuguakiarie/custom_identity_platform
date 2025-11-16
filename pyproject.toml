@@ -21,7 +21,8 @@ dependencies = [
     "python-multipart (>=0.0.20,<0.0.21)",
     "email-validator (>=2.2.0,<3.0.0)",
     "bcrypt (==4.0.1)",
-    "slowapi (>=0.1.9,<0.2.0)"
+    "slowapi (>=0.1.9,<0.2.0)",
+    "pyotp (>=2.9.0,<3.0.0)"
 ]
 
 

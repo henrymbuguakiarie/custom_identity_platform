@@ -1,5 +1,6 @@
 # tests/test_auth.py
 import time
+import pyotp
 from app.models.rbac import Role
 from app.models.audit import AuditLog
 
@@ -116,3 +117,16 @@ def test_admin_dashboard_access(client, db_session):
     headers = {"Authorization": f"Bearer {access_token}"}
     response = client.get("/admin/dashboard", headers=headers)
     assert response.status_code == 200, response.text
+
+def test_setup_and_verify_mfa(client, create_test_user):
+    user = create_test_user()
+    # Setup MFA
+    resp = client.post("/auth/mfa/setup", headers={"Authorization": f"Bearer {user.token}"})
+    data = resp.json()
+    assert "otp_uri" in data
+
+    # Verify MFA
+    totp = pyotp.TOTP(data["secret"])
+    code = totp.now()
+    verify_resp = client.post("/auth/mfa/verify", json={"code": code}, headers={"Authorization": f"Bearer {user.token}"})
+    assert verify_resp.status_code == 200

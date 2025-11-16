@@ -1,12 +1,15 @@
+import pyotp
+import base64
 from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Form
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.crud import user_crud
 from app.config import settings
-from app.schemas.user import UserCreate, UserOut, RefreshTokenRequest
+from app.schemas.user import UserCreate, UserOut, RefreshTokenRequest, MFAValidateRequest
 from app.core.dependencies import get_current_user
 from app.core.security import create_session, create_access_token, create_id_token, verify_refresh_token, rotate_refresh_session
 from app.models.rbac import UserSession
@@ -14,7 +17,6 @@ from app.models.user import User
 from app.core.utils import verify_code_challenge
 from app.crud.oauth_crud import consume_authorization_code, get_client_by_client_id
 from app.utils.audit import log_event
-from fastapi import Request
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -107,6 +109,23 @@ def token_endpoint(
         user = user_crud.authenticate_user(db, form_data.username, form_data.password)
         if not user:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
+        
+        # -------------------------------
+        # MFA check
+        # -------------------------------
+        if user.mfa_secret:
+            # MFA is enabled: require the client to send TOTP code
+            if not code:  # Reuse the 'code' parameter in your endpoint
+                raise HTTPException(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "MFA code required"
+                )
+            totp = pyotp.TOTP(user.mfa_secret)
+            if not totp.verify(code, valid_window=1):
+                raise HTTPException(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "Invalid MFA code"
+                )
 
         session, refresh_token, access_token = create_session(
             user,
@@ -243,3 +262,36 @@ def revoke_token(
     db.add(target)
     db.commit()
     return {"detail": "Session revoked"}
+
+@router.post("/mfa/setup")
+def mfa_setup(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Generate a TOTP secret for the user to set up MFA.
+    Returns the provisioning URI for use with authenticator apps.
+    """
+    if current_user.mfa_secret:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA already set up")
+
+    # Generate a new TOTP secret
+    totp_secret = pyotp.random_base32()
+    current_user.mfa_secret = totp_secret
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    # Create provisioning URI
+    totp = pyotp.TOTP(totp_secret)
+    provisioning_uri = totp.provisioning_uri(name=current_user.email, issuer_name="CustomIdentityPlatform")
+
+    return {"provisioning_uri": provisioning_uri}
+
+@router.post("/mfa/verify")
+@limiter.limit("5/minute")
+def verify_mfa(request: MFAValidateRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.mfa_secret:
+        return JSONResponse({"detail": "MFA not enabled"}, status_code=400)
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if totp.verify(request.code):
+        return {"detail": "MFA verification successful"}
+    return JSONResponse({"detail": "Invalid TOTP code"}, status_code=401)

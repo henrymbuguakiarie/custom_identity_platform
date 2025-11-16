@@ -15,6 +15,7 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    mfa_secret = Column(String, nullable=True)  # Store TOTP secret
 
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")

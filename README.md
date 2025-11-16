@@ -582,6 +582,23 @@ curl -X POST http://127.0.0.1:8000/auth/token -F "username=admin" -F "password=a
 
 ---
 
+### **Multi-Factor Authentication (MFA)**
+
+* **TOTP (Time-Based One-Time Passwords)**
+
+  * `mfa_secret` stored per user (encrypted).
+  * **Enable/Disable TOTP**
+
+    * `POST /auth/mfa/setup` → Generates QR code for authenticator apps.
+    * `POST /auth/mfa/verify` → Validates TOTP code.
+  * Required during login if enabled.
+* Security measures:
+
+  * Rate-limiting for verification attempts.
+  * Secrets are securely stored (encrypted).
+
+> **Note:** MFA is currently enforced for **password grant flow**. Authorization Code + PKCE flow handles MFA at the login/authentication step (before code issuance).
+
 ### ✅ Summary of Security Features
 
 * Strong password enforcement

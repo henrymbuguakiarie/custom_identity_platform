@@ -33,3 +33,7 @@ class UserOut(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+class MFAValidateRequest(BaseModel):
+    username: str
+    mfa_code: str = Field(..., min_length=6, max_length=6, description="6-digit MFA code")
