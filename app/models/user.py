@@ -18,3 +18,4 @@ class User(Base):
 
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")  

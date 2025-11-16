@@ -185,6 +185,19 @@ This:
 
 ---
 
+## ▶️ Running the Application
+
+```bash
+poetry run uvicorn app.main:app --reload
+```
+
+Open:
+
+* Docs → [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* Root → [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+---
+
 ## 🔐 OAuth2 Authorization Code Flow (PKCE)
 
 This flow is used by **SPAs (Vue/React/Next), mobile apps, or public clients.**
@@ -342,16 +355,157 @@ def admin_dashboard():
 
 ---
 
-## ▶️ Running the Application
+## 📝 Logging & Audit
+
+This platform logs **all authentication events** for traceability and compliance. Events include:
+
+* **login** – successful login via password or authorization code
+* **login_failed** – failed login attempt
+* **refresh_token** – refresh token rotation
+* **logout** – manual token revocation
+
+All audit events are stored in the database and can optionally be sent to a centralized logging service.
+
+---
+
+### **1️⃣ Audit Logging in Action**
+
+When a user logs in or refreshes a token, a new audit record is created. Example fields:
+
+| Field        | Description                          |
+| ------------ | ------------------------------------ |
+| `id`         | Unique log entry ID                  |
+| `user_id`    | ID of the user performing the action |
+| `event_type` | Event type (`login`, `logout`, etc.) |
+| `details`    | Additional details about the event   |
+| `ip_address` | IP address from request              |
+| `user_agent` | User-Agent string from request       |
+| `created_at` | Timestamp of the event               |
+
+---
+
+### **2️⃣ Example: Login Event**
 
 ```bash
-poetry run uvicorn app.main:app --reload
+curl -X POST http://127.0.0.1:8000/auth/token \
+  -F "grant_type=password" \
+  -F "username=admin" \
+  -F "password=adminpass"
 ```
 
-Open:
+✅ Response:
 
-* Docs → [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-* Root → [http://127.0.0.1:8000](http://127.0.0.1:8000)
+```json
+{
+  "access_token": "<ACCESS_TOKEN>",
+  "refresh_token": "<REFRESH_TOKEN>",
+  "id_token": "<ID_TOKEN>",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+> Audit log automatically created:
+
+| id | user_id | event_type | details          | ip_address | user_agent  | created_at          |
+| -- | ------- | ---------- | ---------------- | ---------- | ----------- | ------------------- |
+| 1  | 1       | login      | Successful login | 127.0.0.1  | curl/7.85.0 | 2025-11-16 22:00:00 |
+
+---
+
+### **3️⃣ Example: Refresh Token Rotation Event**
+
+```bash
+curl -X POST http://127.0.0.1:8000/auth/token/refresh \
+  -F "refresh_token=<REFRESH_TOKEN>"
+```
+
+✅ Response:
+
+```json
+{
+  "access_token": "<NEW_ACCESS_TOKEN>",
+  "refresh_token": "<NEW_REFRESH_TOKEN>",
+  "id_token": "<ID_TOKEN>",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+> Audit log automatically created:
+
+| id | user_id | event_type    | details                             | ip_address | user_agent  | created_at          |
+| -- | ------- | ------------- | ----------------------------------- | ---------- | ----------- | ------------------- |
+| 2  | 1       | refresh_token | Rotated refresh token old_session=5 | 127.0.0.1  | curl/7.85.0 | 2025-11-16 22:05:00 |
+
+---
+
+### **4️⃣ Example: Logout / Token Revocation**
+
+```bash
+curl -X POST http://127.0.0.1:8000/auth/revoke \
+  -F "refresh_token=<REFRESH_TOKEN>"
+```
+
+✅ Response:
+
+```json
+{
+  "detail": "Refresh token revoked successfully"
+}
+```
+
+> Audit log automatically created:
+
+| id | user_id | event_type | details               | ip_address | user_agent  | created_at          |
+| -- | ------- | ---------- | --------------------- | ---------- | ----------- | ------------------- |
+| 3  | 1       | logout     | Revoked refresh token | 127.0.0.1  | curl/7.85.0 | 2025-11-16 22:10:00 |
+
+---
+
+### **5️⃣ Implementation Notes**
+
+1. **Database Table** – You should create an `audit_logs` table:
+
+```python
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    event_type = Column(String(50), nullable=False)
+    details = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
+
+1. **Utility function** – `log_event` captures events:
+
+```python
+def log_event(user_id: int | None, event_type: str, details: str = "", request: Request | None = None):
+    ip_address = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+
+    db = SessionLocal()
+    try:
+        audit = AuditLog(
+            user_id=user_id,
+            event_type=event_type,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        db.add(audit)
+        db.commit()
+    finally:
+        db.close()
+```
+
+1. **Integration** – Add `log_event` calls to:
+
+* `/auth/token` → `login` or `login_failed`
+* `/auth/token/refresh` → `refresh_token`
+* `/auth/revoke` → `logout`
 
 ---
 

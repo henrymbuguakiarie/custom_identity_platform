@@ -13,6 +13,8 @@ from app.models.rbac import UserSession
 from app.models.user import User
 from app.core.utils import verify_code_challenge
 from app.crud.oauth_crud import consume_authorization_code, get_client_by_client_id
+from app.utils.audit import log_event
+from fastapi import Request
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -33,6 +35,7 @@ def token_endpoint(
     code_verifier: str | None = Form(None),
     form_data: OAuth2PasswordRequestForm = Depends(),  # password grant
     db: Session = Depends(get_db),
+    request: Request = None,
 ):
     """
     Token endpoint supporting:
@@ -76,6 +79,8 @@ def token_endpoint(
             settings.refresh_token_expire_days,
         )
 
+        log_event(user_id=user.id, event_type="authorization_code login", request=request)
+
         id_token = create_id_token(user, expires_delta=timedelta(minutes=settings.access_token_expire_minutes), aud=client.client_id)
 
         return {
@@ -100,6 +105,7 @@ def token_endpoint(
             settings.access_token_expire_minutes,
             settings.refresh_token_expire_days,
         )
+        log_event(user_id=user.id, event_type="password_grant login", request=request)
 
         id_token = create_id_token(user, expires_delta=timedelta(minutes=settings.access_token_expire_minutes))
 
@@ -122,6 +128,7 @@ def token_endpoint(
 def refresh_token(
     refresh_token: str = Form(...),
     db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     Rotate the refresh token and issue a new access token + id token.
@@ -145,6 +152,8 @@ def refresh_token(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
+
+    log_event(user_id=user.id, event_type="refresh_token used", request=request)
 
     return {
         "access_token": access_token,
