@@ -36,8 +36,14 @@ dev = [
     "pytest-asyncio (>=1.2.0,<2.0.0)",
     "black (>=25.9.0,<26.0.0)",
     "isort (>=7.0.0,<8.0.0)",
-    "flake8 (>=7.3.0,<8.0.0)"
+    "flake8 (>=7.3.0,<8.0.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "alembic (>=1.17.2,<2.0.0)"
 ]
 [tool.poetry]
-package-mode = false
+package-mode = true
+packages = [
+    { include = "app" }
+]
+
 
