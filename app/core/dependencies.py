@@ -36,3 +36,30 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Session is inactive or revoked")
 
     return UserOut.from_orm(user)
+
+
+def require_role(required_role: str):
+    def wrapper(current_user=Depends(get_current_user)):
+        roles = {role.name for role in current_user.roles}
+        if required_role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role '{required_role}' required"
+            )
+        return current_user
+    return wrapper
+
+def require_permission(required_permission: str):
+    def wrapper(current_user=Depends(get_current_user)):
+        user_permissions = {
+            perm.name for role in current_user.roles for perm in role.permissions
+        }
+        if required_permission not in user_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission '{required_permission}' required"
+            )
+        return current_user
+    return wrapper
+
+

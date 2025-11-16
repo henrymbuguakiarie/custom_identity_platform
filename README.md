@@ -1,153 +1,243 @@
-# Custom Identity Platform
+# **Custom Identity Platform**
 
 A **Custom Identity Platform** built with **FastAPI**, **SQLAlchemy**, and **PostgreSQL**, providing secure authentication and authorization with **OAuth2**, **JWT access & refresh tokens**, and **Role-Based Access Control (RBAC)**.
 
-This platform is designed for production-ready identity management — featuring token rotation, session tracking, **OpenID Connect–style user claims**, **public key discovery for JWT validation**, and **secure refresh token handling**.
+This platform is designed for production-ready identity management — featuring secure token rotation, refresh session tracking, **OpenID Connect–style user claims**, **JWKS public key discovery**, Authorization Code Flow with PKCE (for SPAs), and automatic refresh token revocation.
 
 ---
 
 ## 🧩 Table of Contents
 
-* [Features](#features)
-* [Dependencies](#dependencies)
-* [Setup](#setup)
-* [Database Setup & Migrations](#database-setup--migrations)
-* [Seeding RBAC, Users & OAuth Clients](#seeding-rbac-users--oauth-clients)
-* [OAuth2 + JWT + Refresh Token Flow](#oauth2--jwt--refresh-token-flow)
-* [Refresh Token Rotation & Revocation](#refresh-token-rotation--revocation)
-* [User Info and JWKS Endpoints](#user-info-and-jwks-endpoints)
-* [RBAC Setup](#rbac-setup)
-* [Running the Application](#running-the-application)
-* [API Endpoints](#api-endpoints)
-* [JWT Authentication & Refresh Flow Diagram](#jwt-authentication--refresh-flow-diagram)
-* [Expected Responses](#expected-responses)
-* [Contributing](#contributing)
+* [Features](#-features)
+* [Dependencies](#-dependencies)
+* [Setup](#-setup)
+* [Database Setup & Migrations](#-database-setup--migrations)
+* [Seeding RBAC, Users & OAuth Clients](#-seeding-rbac-users--oauth-clients)
+* [OAuth2 Authorization Code Flow (PKCE)](#-oauth2-authorization-code-flow-pkce)
+* [OAuth2 Password + JWT + Refresh Token Flow](#-oauth2-password--jwt--refresh-token-flow)
+* [Refresh Token Rotation & Revocation](#-refresh-token-rotation--revocation)
+* [User Info and JWKS Endpoints](#-user-info-and-jwks-endpoints)
+* [RBAC Setup](#-rbac-setup)
+* [Running the Application](#️-running-the-application)
+* [API Endpoints](#-api-endpoints)
+* [Flow Diagrams](#-flow-diagrams)
+* [Expected Responses](#-expected-responses)
+* [Contributing](#-contributing)
 
 ---
 
 ## 🚀 Features
 
-* ✅ User registration with hashed passwords (bcrypt)
-* ✅ OAuth2 Password Flow with JWT access tokens
-* ✅ Refresh token rotation with database-backed session management
-* ✅ Refresh token revocation (manual & automatic)
-* ✅ Role-Based Access Control (RBAC) for endpoint protection
+* ✅ **OAuth2 Password Flow** (first-party clients)
+* ✅ **OAuth2 Authorization Code Flow with PKCE** (SPAs / Mobile Apps)
+* ✅ JWT Access Tokens (RS256)
+* ✅ Refresh tokens with **rotation** and DB-backed tracking
+* ✅ Token revocation (manual + automatic)
 * ✅ **OpenID Connect–compatible `/userinfo` endpoint**
-* ✅ **JWKS public key discovery endpoint (`/.well-known/jwks.json`)**
-* ✅ Secure token revocation and expiration policies
-* ✅ PostgreSQL + Alembic for migrations
-* ✅ Clean modular FastAPI architecture
-* ✅ Configuration management via `.env` and Pydantic Settings
+* ✅ **JWKS endpoint (`/.well-known/jwks.json`)** for public key discovery
+* ✅ Role-Based Access Control (RBAC)
+* ✅ Seeders for roles, users, OAuth clients, and redirect URIs
+* ✅ SQLAlchemy + Alembic migrations
+* ✅ Clean, testable FastAPI architecture
 
 ---
 
 ## ⚙️ Dependencies
 
-Key dependencies managed by **Poetry**:
+Core dependencies include:
 
-* **FastAPI** – modern web framework
-* **SQLAlchemy** – ORM
-* **Alembic** – database migrations
-* **psycopg2-binary** – PostgreSQL adapter
-* **python-jose** – JWT handling
-* **passlib[bcrypt]** – password hashing
-* **Authlib** – OAuth2 utilities
-* **pydantic-settings** – environment configuration
-* **python-multipart** – form data handling
+* **FastAPI**
+* **SQLAlchemy**
+* **Alembic**
+* **psycopg2-binary**
+* **Authlib** (OAuth2 utilities)
+* **python-jose** (JWT)
+* **passlib[bcrypt]**
+* **pydantic-settings**
+* **python-multipart**
+
+Dependency management handled via **Poetry**.
 
 ---
 
 ## ⚙️ Setup
 
-1. **Clone the repository**
+### 1. Clone the repository
 
-   ```bash
-   git clone https://github.com/henrymbuguakiarie/custom_identity_platform.git
-   cd custom_identity_platform
-   ```
+```bash
+git clone https://github.com/henrymbuguakiarie/custom_identity_platform.git
+cd custom_identity_platform
+```
 
-1. **Configure environment**
+### 2. Configure environment
 
-   Copy the example `.env` file and update it with your configuration:
+```bash
+cp .env.example .env
+```
 
-   ```bash
-   cp .env.example .env
-   ```
+Edit `.env`:
 
-   Edit `.env`:
+```env
+SECRET_KEY=your_secret_key
+ALGORITHM=RS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+SQLALCHEMY_URL=postgresql+psycopg2://postgres:password@localhost:5432/identity_db
+PRIVATE_KEY_PATH=/path/to/private_key.pem
+PUBLIC_KEY_PATH=/path/to/public_key.pem
+```
 
-   ```env
-   SECRET_KEY=your_secret_key
-   ALGORITHM=RS256
-   ACCESS_TOKEN_EXPIRE_MINUTES=30
-   REFRESH_TOKEN_EXPIRE_DAYS=7
-   SQLALCHEMY_URL=postgresql+psycopg2://postgres:password@localhost:5432/identity_db
-   PRIVATE_KEY_PATH=/path/to/private_key.pem
-   PUBLIC_KEY_PATH=/path/to/public_key.pem
-   ```
+### 3. Generate RSA keys
 
-1. **Generate RSA Key Pair**
+```bash
+openssl genrsa -out private_key.pem 2048
+openssl rsa -in private_key.pem -pubout -out public_key.pem
+```
 
-   ```bash
-   # Private key
-   openssl genrsa -out private_key.pem 2048
+### 4. Install dependencies
 
-   # Public key
-   openssl rsa -in private_key.pem -pubout -out public_key.pem
-   ```
+```bash
+poetry install
+```
 
-1. **Install dependencies**
+---
 
-   ```bash
-   poetry install
+## 🗄 Database Setup & Migrations
 
-1. **Run Alembic migrations**
+### Run Alembic migrations:
 
-   ```bash
-   poetry run alembic upgrade head
-   ```
+```bash
+poetry run alembic upgrade head
+```
 
 ---
 
 ## 🪴 Seeding RBAC, Users & OAuth Clients
 
-Run the following commands to initialize roles, permissions, default admin user, and OAuth clients:
+The platform includes seed utilities to automatically bootstrap RBAC, an admin user, OAuth clients, and redirect URIs.
 
-1. **Seed RBAC roles, permissions, and admin user**:
+### 1. Seed RBAC roles, permissions, and admin user
 
-    ```bash
-    python -m app.utils.seed_rbac
-    ```
+```bash
+python -m app.utils.seed_rbac
+```
 
-1. **Seed a public OAuth client (SPA)**:
+Creates:
 
-    ```bash
-    python -m app.utils.seed_oauth_client
-    ```
+* **Admin** and **User** roles
+* Default permissions
+* Default admin user:
 
-    > This script generates a `client_id` dynamically and saves it to `oauth_client.json`.
-
-1. **Update redirect URIs**:
-
-    ```bash
-    python -m app.utils.update_redirect_uris
-    ```
-
-    > This script reads the `client_id` from `oauth_client.json` and updates redirect URIs.
-
-1. **Optional combined workflow**:
-
-    You can also run the **idempotent script** which handles both seeding and redirect URI updates:
-
-    ```bash
-    python -m app.utils.seed_or_update_oauth_client
-    ```
+  * `username`: `admin`
+  * `password`: `adminpass`
 
 ---
 
-## 🔑 OAuth2 + JWT + Refresh Token Flow
+### 2. Seed a public OAuth client (SPA-friendly, PKCE)
 
-### 1️⃣ Login and Token Issuance
+```bash
+python -m app.utils.seed_oauth_client
+```
+
+This script:
+
+* Creates a public OAuth client
+* Generates a random `client_id`
+* Saves it into **oauth_client.json**
+
+  * If the file does **not exist**, it is **created**
+  * If it exists, it is **overwritten**
+
+**Example file:**
+
+```json
+{
+  "client_id": "XyZ123..."
+}
+```
+
+---
+
+### 3. Update redirect URIs
+
+```bash
+python -m app.utils.update_redirect_uris
+```
+
+This script:
+
+* Reads `client_id` from **oauth_client.json**
+* Updates redirect URIs in DB
+
+---
+
+### 4. (Optional) Run combined idempotent workflow
+
+```bash
+python -m app.utils.seed_or_update_oauth_client
+```
+
+This:
+
+* Seeds OAuth client if missing
+* Updates redirect URIs
+* Ensures consistent client configuration
+
+---
+
+## 🔐 OAuth2 Authorization Code Flow (PKCE)
+
+This flow is used by **SPAs (Vue/React/Next), mobile apps, or public clients.**
+
+### Step 1 — Generate PKCE values
+
+```bash
+VERIFIER=$(openssl rand -base64 32)
+CHALLENGE=$(echo -n $VERIFIER | openssl dgst -sha256 -binary | openssl base64 | tr '+/' '-_' | tr -d '=')
+```
+
+### Step 2 — Begin login (GET Authorization Endpoint)
+
+```bash
+GET /auth/authorize
+  ?response_type=code
+  &client_id=<CLIENT_ID>
+  &redirect_uri=http://localhost:3000/callback
+  &code_challenge=$CHALLENGE
+  &code_challenge_method=S256
+```
+
+### Step 3 — Exchange code for tokens
+
+```bash
+curl -X POST http://127.0.0.1:8000/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "authorization_code",
+    "client_id": "<CLIENT_ID>",
+    "code_verifier": "'"$VERIFIER"'",
+    "code": "<AUTH_CODE>",
+    "redirect_uri": "http://localhost:3000/callback"
+  }'
+```
+
+Response:
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "id_token": "...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+---
+
+## 🔑 OAuth2 Password + JWT + Refresh Token Flow
+
+### 1. Login using username/password
 
 ```bash
 curl -X POST http://127.0.0.1:8000/auth/token \
@@ -156,39 +246,18 @@ curl -X POST http://127.0.0.1:8000/auth/token \
   -F "password=adminpass"
 ```
 
-✅ Example Response:
-
-```json
-{
-  "access_token": "<ACCESS_TOKEN>",
-  "refresh_token": "<REFRESH_TOKEN>",
-  "id_token": "<ID_TOKEN>",
-  "token_type": "bearer",
-  "expires_in": 1800
-}
-```
-
----
-
-### 2️⃣ Accessing Protected Endpoints
-
-```bash
- curl -X POST -H "Authorization: Bearer <ACCESS_TOKEN>" \
-http://127.0.0.1:8000/auth/me
-```
-
 ---
 
 ## 🔄 Refresh Token Rotation & Revocation
 
-### Refresh Token Rotation
+### 1. Exchange refresh token (rotation)
 
 ```bash
 curl -X POST http://127.0.0.1:8000/auth/token/refresh \
   -F "refresh_token=<REFRESH_TOKEN>"
 ```
 
-✅ Example Response:
+Response:
 
 ```json
 {
@@ -199,69 +268,49 @@ curl -X POST http://127.0.0.1:8000/auth/token/refresh \
 }
 ```
 
-**Notes:**
+**Old refresh token is revoked automatically.**
 
-* Old refresh tokens are **revoked automatically** after use.
-* Always store the **new refresh token** securely.
+---
 
-### Manual Token Revocation (Logout)
+### 2. Manual revocation (Logout)
 
 ```bash
 curl -X POST http://127.0.0.1:8000/auth/revoke \
   -F "refresh_token=<REFRESH_TOKEN>"
 ```
 
-✅ Example Response:
+Response:
 
 ```json
-{
-  "detail": "Refresh token revoked successfully"
-}
+{ "detail": "Refresh token revoked successfully" }
 ```
 
-After revocation, using the same refresh token returns:
+After revocation:
 
 ```json
-{
-  "detail": "Invalid or revoked refresh token"
-}
+{ "detail": "Invalid or revoked refresh token" }
 ```
-
-### Automatic Token Invalidation
-
-Tokens are **automatically invalidated** when:
-
-* A user changes their **password**
-* A user’s **roles** change
 
 ---
 
 ## 🧾 User Info and JWKS Endpoints
 
-### `/auth/userinfo` — Retrieve User Claims
+### `/auth/userinfo`
 
-```bash
-GET /auth/userinfo
-```
-
-Response:
+Returns OpenID Connect–style claims:
 
 ```json
 {
   "sub": "user_id_123",
   "name": "John Doe",
   "email": "john@example.com",
-  "roles": ["User"]
+  "roles": ["Admin"]
 }
 ```
 
-### `/.well-known/jwks.json` — Public Key Discovery
+### `/.well-known/jwks.json`
 
-```bash
-GET /.well-known/jwks.json
-```
-
-Response:
+JWKS public key discovery:
 
 ```json
 {
@@ -282,24 +331,13 @@ Response:
 
 ## 🧱 RBAC Setup
 
-Seed roles, permissions, and the admin user:
-
-```bash
-python -m app.utils.seed_rbac
-```
-
-Protect endpoints by role:
+Protect an endpoint:
 
 ```python
-from app.utils.auth import role_required
-from fastapi import APIRouter
-
-router = APIRouter()
-
 @router.get("/admin/dashboard")
 @role_required(["Admin"])
 def admin_dashboard():
-    return {"message": "Welcome, Admin! Access granted."}
+    return {"message": "Welcome Admin"}
 ```
 
 ---
@@ -310,24 +348,42 @@ def admin_dashboard():
 poetry run uvicorn app.main:app --reload
 ```
 
-Access:
+Open:
 
-* Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-* Root: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+* Docs → [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* Root → [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 ---
 
 ## 📚 API Endpoints
 
-| Endpoint                 | Method   | Description                       |
-| ------------------------ | -------- | --------------------------------- |
-| `/auth/register`         | POST     | Register a new user               |
-| `/auth/token`            | POST     | Get access + refresh + ID tokens  |
-| `/auth/token/refresh`    | POST     | Refresh tokens                    |
-| `/auth/revoke`           | POST     | Revoke refresh token              |
-| `/auth/authorize`        | GET/POST | Authorization Code Flow (PKCE)    |
-| `/auth/me`               | GET      | Get current authenticated user    |
-| `/auth/userinfo`         | GET      | Get user claims (OpenID-style)    |
-| `/.well-known/jwks.json` | GET      | Retrieve public signing keys      |
-| `/admin/dashboard`       | GET      | Admin-only route (RBAC protected) |
+| Endpoint                 | Method   | Description                  |
+| ------------------------ | -------- | ---------------------------- |
+| `/auth/register`         | POST     | Register a user              |
+| `/auth/token`            | POST     | Access + refresh + ID tokens |
+| `/auth/token/refresh`    | POST     | Rotate refresh token         |
+| `/auth/revoke`           | POST     | Revoke refresh token         |
+| `/auth/authorize`        | GET/POST | PKCE Authorization Code      |
+| `/auth/me`               | GET      | Current authenticated user   |
+| `/auth/userinfo`         | GET      | OIDC user claims             |
+| `/.well-known/jwks.json` | GET      | Public signing keys          |
+| `/admin/dashboard`       | GET      | RBAC-protected route         |
 
+---
+
+## 📊 Flow Diagrams
+
+*(Optional — I can generate beautiful diagrams if you want them.)*
+
+---
+
+## 🙌 Contributing
+
+PRs welcome — especially for:
+
+* Distributed session stores (Redis)
+* Mobile SDK helper modules
+* Additional OAuth grant types
+* More RBAC examples
+
+---

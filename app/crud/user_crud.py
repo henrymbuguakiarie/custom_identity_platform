@@ -5,7 +5,7 @@ from app.models.rbac import UserSession
 
 def create_user(db: Session, username: str, email: str, password: str):
     hashed_pw = hash_password(password)
-    user = User(username=username, email=email, hashed_password=hashed_pw)
+    user = User(username=username, email=email, password_hash=hashed_pw)
     db.add(user)
     db.commit()
     db.refresh(user)
