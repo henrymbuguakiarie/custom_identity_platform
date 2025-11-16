@@ -676,23 +676,78 @@ def log_event(user_id: int | None, event_type: str, details: str = "", request: 
 
 ## 📚 API Endpoints
 
-| Endpoint                 | Method   | Description                  |
-| ------------------------ | -------- | ---------------------------- |
-| `/auth/register`         | POST     | Register a user              |
-| `/auth/token`            | POST     | Access + refresh + ID tokens |
-| `/auth/token/refresh`    | POST     | Rotate refresh token         |
-| `/auth/revoke`           | POST     | Revoke refresh token         |
-| `/auth/authorize`        | GET/POST | PKCE Authorization Code      |
-| `/auth/me`               | GET      | Current authenticated user   |
-| `/auth/userinfo`         | GET      | OIDC user claims             |
-| `/.well-known/jwks.json` | GET      | Public signing keys          |
-| `/admin/dashboard`       | GET      | RBAC-protected route         |
+| **Method** | **Endpoint**                 | **Access**    | **Description / Purpose**                                                                     |
+| ---------- | ---------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| POST       | `/auth/register`             | Public        | Register a new user. Returns user info.                                                       |
+| POST       | `/auth/token`                | Public        | Obtain access, refresh, and ID tokens. Supports password grant and authorization code (PKCE). |
+| POST       | `/auth/token/refresh`        | Authenticated | Rotate refresh token and get new access + ID tokens.                                          |
+| POST       | `/auth/token/revoke`         | Authenticated | Revoke a refresh token or session. User or admin can revoke.                                  |
+| POST       | `/auth/logout`               | Authenticated | Log out the current session (revokes refresh token).                                          |
+| GET        | `/me`                        | Authenticated | Return info about the currently authenticated user.                                           |
+| GET        | `/userinfo`                  | Authenticated | Return user claims. Requires access token.                                                    |
+| GET        | `/admin/dashboard`           | Admin         | Admin landing page / dashboard.                                                               |
+| GET        | `/admin/audit-logs`          | Admin         | Retrieve audit logs with pagination (`skip`, `limit`).                                        |
+| GET        | `/admin/users`               | Admin         | List and manage users. Supports pagination & filtering.                                       |
+| POST       | `/admin/users/deactivate`    | Admin         | Deactivate a user account.                                                                    |
+| GET        | `/admin/roles`               | Admin         | View and manage roles and permissions.                                                        |
+| POST       | `/admin/roles`               | Admin         | Create or update roles/permissions.                                                           |
+| GET        | `/admin/sessions`            | Admin         | View active sessions per user. Supports pagination & filtering.                               |
+| POST       | `/admin/sessions/deactivate` | Admin         | Deactivate a specific session.
 
 ---
 
 ## 📊 Flow Diagrams
 
-*(Optional — I can generate beautiful diagrams if you want them.)*
+```mermaid
+flowchart TD
+    %% Users
+    A[User] -->|Register| B[/auth/register]
+    A -->|Login (Password Grant / Authorization Code)| C[/auth/token]
+    C -->|Access Token| D[/me]
+    C -->|Access Token| E[/userinfo]
+    C -->|Refresh Token| F[/auth/token/refresh]
+    C -->|Revoke Token| G[/auth/token/revoke]
+    D --> H[Database: Users Table]
+    E --> H
+
+    %% Admin
+    Admin[Admin User] -->|Access Token| I[/admin/dashboard]
+    I --> J[/admin/users]
+    I --> K[/admin/roles]
+    I --> L[/admin/sessions]
+    J --> M[Database: Users Table]
+    K --> N[Database: Roles & Permissions]
+    L --> O[Database: UserSessions]
+
+    %% Logging
+    B --> P[AuditLog]
+    F --> P
+    G --> P
+    J --> P
+    K --> P
+    L --> P
+```
+
+### Flow Explanation:
+
+1. **User endpoints**
+
+   * `/auth/register` → create new user.
+   * `/auth/token` → obtain access and refresh tokens.
+   * `/auth/token/refresh` → rotate refresh token.
+   * `/auth/token/revoke` → revoke a session.
+   * `/me` and `/userinfo` → get current user info.
+
+2. **Admin endpoints**
+
+   * `/admin/dashboard` → entry point for admin users.
+   * `/admin/users` → list/manage users.
+   * `/admin/roles` → manage roles and permissions.
+   * `/admin/sessions` → view/revoke user sessions.
+
+3. **Audit logging**
+
+   * All key actions (logins, token refresh/revoke, admin actions) are recorded in `AuditLog`.
 
 ---
 
