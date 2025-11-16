@@ -502,7 +502,131 @@ curl -X POST http://127.0.0.1:8000/auth/token -F "username=admin" -F "password=a
 * Rate-limiting on sensitive endpoints
 * HTTPS for secure transport
 * Refresh token rotation and revocation
-* JWT s
+* JWTs
+
+
+## **Admin & User Management Endpoints**
+
+This project now includes enhanced admin and user management endpoints with role-based access control, audit logging, and optional pagination/filtering.
+
+### **Endpoints**
+
+#### **1. Admin Dashboard**
+
+```http
+GET /admin/dashboard
+```
+
+* **Roles required:** `Admin`
+* Returns a welcome message confirming access.
+
+---
+
+#### **2. Audit Logs**
+
+```http
+GET /admin/audit-logs?skip=0&limit=50
+```
+
+* **Roles required:** `Admin`
+* Supports pagination with `skip` and `limit`.
+* Returns recent audit logs, including admin actions like user deactivation and session revocation.
+
+---
+
+#### **3. List Users**
+
+```http
+GET /admin/users?skip=0&limit=50&username={username}&email={email}
+```
+
+* **Roles required:** `Admin`
+* Supports pagination (`skip`, `limit`) and optional filtering by `username` or `email`.
+* Returns a list of users with basic info.
+
+---
+
+#### **4. Deactivate User**
+
+```http
+POST /admin/users/{user_id}/deactivate
+```
+
+* **Roles required:** `Admin`
+* Deactivates a user account.
+* Action is logged in audit logs.
+
+---
+
+#### **5. List Active Sessions**
+
+```http
+GET /admin/sessions?skip=0&limit=50&user_id={user_id}
+```
+
+* **Roles required:** `Admin`
+* Supports pagination (`skip`, `limit`) and optional filtering by `user_id`.
+* Returns active sessions with session metadata.
+
+---
+
+#### **6. Revoke Session**
+
+```http
+POST /admin/sessions/{session_id}/revoke
+```
+
+* **Roles required:** `Admin`
+* Revokes a session (sets `is_active` to `False` and `revoked` to `True`).
+* Action is logged in audit logs.
+
+---
+
+### **Audit Logging**
+
+All critical admin actions are logged via the `log_event` utility for compliance and traceability:
+
+* User deactivation
+* Session revocation
+* Role or permission updates
+
+Each log entry includes:
+
+* User performing the action
+* Action type
+* Timestamp
+
+---
+
+### **Example: Admin List Users Response**
+
+```json
+[
+  {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "is_active": true,
+    "roles": ["User"]
+  },
+  {
+    "id": 2,
+    "username": "jane_admin",
+    "email": "jane@example.com",
+    "is_active": true,
+    "roles": ["Admin"]
+  }
+]
+```
+
+---
+
+### **Notes**
+
+* All endpoints require an **access token** in the `Authorization` header.
+* Role-based access is enforced via `role_required(["Admin"])`.
+* Pagination and filtering help manage large datasets efficiently.
+* Admin actions are tracked for **audit and compliance purposes**.
 
 ### **5️⃣ Implementation Notes**
 
