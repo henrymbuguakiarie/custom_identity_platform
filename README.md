@@ -42,6 +42,92 @@ This platform is designed for production-ready identity management — featuring
 
 ---
 
+## 📚 API Endpoints
+
+| **Method** | **Endpoint**                 | **Access**    | **Description / Purpose**                                                                     |
+| ---------- | ---------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| POST       | `/auth/register`             | Public        | Register a new user. Returns user info.                                                       |
+| POST       | `/auth/token`                | Public        | Obtain access, refresh, and ID tokens. Supports password grant and authorization code (PKCE). |
+| POST       | `/auth/token/refresh`        | Authenticated | Rotate refresh token and get new access + ID tokens.                                          |
+| POST       | `/auth/token/revoke`         | Authenticated | Revoke a refresh token or session. User or admin can revoke.                                  |
+| POST       | `/auth/logout`               | Authenticated | Log out the current session (revokes refresh token).                                          |
+| GET        | `/me`                        | Authenticated | Return info about the currently authenticated user.                                           |
+| GET        | `/userinfo`                  | Authenticated | Return user claims. Requires access token.                                                    |
+| GET        | `/admin/dashboard`           | Admin         | Admin landing page / dashboard.                                                               |
+| GET        | `/admin/audit-logs`          | Admin         | Retrieve audit logs with pagination (`skip`, `limit`).                                        |
+| GET        | `/admin/users`               | Admin         | List and manage users. Supports pagination & filtering.                                       |
+| POST       | `/admin/users/deactivate`    | Admin         | Deactivate a user account.                                                                    |
+| GET        | `/admin/roles`               | Admin         | View and manage roles and permissions.                                                        |
+| POST       | `/admin/roles`               | Admin         | Create or update roles/permissions.                                                           |
+| GET        | `/admin/sessions`            | Admin         | View active sessions per user. Supports pagination & filtering.                               |
+| POST       | `/admin/sessions/deactivate` | Admin         | Deactivate a specific session.                                                                |
+
+---
+
+## 📊 Flow Diagrams
+
+```mermaid
+flowchart TD
+    subgraph Public Endpoints
+        A1[POST /auth/register] -->|Creates user| A2[Return UserOut]
+        B1[POST /auth/token] -->|Password Grant or Authorization Code Grant| B2[Return access_token, refresh_token, id_token]
+    end
+
+    subgraph Authenticated Endpoints
+        C1[POST /auth/token/refresh] -->|Rotates refresh token| C2[Return new access_token, refresh_token, id_token]
+        D1[POST /auth/logout] -->|Revoke current session| D2[Return message]
+        E1[GET /me] -->|Return current user info| E2[UserOut]
+        F1[GET /userinfo] -->|Return user claims| F2[UserOut]
+        G1[POST /auth/token/revoke] -->|Revoke token/session| G2[Return detail]
+    end
+
+    subgraph Admin Endpoints
+        H1[GET /admin/dashboard] -->|Admin access only| H2[Welcome message]
+        I1[GET /admin/audit-logs] -->|Paginated logs| I2[Return logs]
+        J1[GET /admin/users] -->|List/manage users| J2[Return users list]
+        K1[POST /admin/users/deactivate] -->|Deactivate user| K2[Return status]
+        L1[GET /admin/roles] -->|Manage roles/permissions| L2[Return roles]
+        M1[POST /admin/roles] -->|Create/update roles| M2[Return status]
+        N1[GET /admin/sessions] -->|View active sessions| N2[Return sessions]
+        O1[POST /admin/sessions/deactivate] -->|Deactivate session| O2[Return status]
+    end
+
+    %% Connections
+    A2 --> B1
+    B2 --> C1
+    B2 --> D1
+    B2 --> E1
+    B2 --> F1
+    B2 --> G1
+    H2 --> I1
+    H2 --> J1
+    H2 --> L1
+    H2 --> N1
+```
+
+### Flow Explanation:
+
+1. **User endpoints**
+
+   * `/auth/register` → create new user.
+   * `/auth/token` → obtain access and refresh tokens.
+   * `/auth/token/refresh` → rotate refresh token.
+   * `/auth/token/revoke` → revoke a session.
+   * `/me` and `/userinfo` → get current user info.
+
+2. **Admin endpoints**
+
+   * `/admin/dashboard` → entry point for admin users.
+   * `/admin/users` → list/manage users.
+   * `/admin/roles` → manage roles and permissions.
+   * `/admin/sessions` → view/revoke user sessions.
+
+3. **Audit logging**
+
+   * All key actions (logins, token refresh/revoke, admin actions) are recorded in `AuditLog`.
+
+---
+
 ## ⚙️ Dependencies
 
 Core dependencies include:
@@ -693,7 +779,6 @@ def log_event(user_id: int | None, event_type: str, details: str = "", request: 
 | POST       | `/admin/roles`               | Admin         | Create or update roles/permissions.                                                           |
 | GET        | `/admin/sessions`            | Admin         | View active sessions per user. Supports pagination & filtering.                               |
 | POST       | `/admin/sessions/deactivate` | Admin         | Deactivate a specific session.                                                                |
-
 
 ---
 
