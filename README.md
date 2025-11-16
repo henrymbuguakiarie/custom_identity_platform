@@ -463,6 +463,47 @@ curl -X POST http://127.0.0.1:8000/auth/revoke \
 
 ---
 
+## 🔒 Security Hardening
+
+The Custom Identity Platform implements multiple security best practices to protect authentication endpoints and sensitive user data.
+
+### Password Policies
+
+* Passwords must be at least 8 characters long.
+* Include at least one uppercase letter, one lowercase letter, one number, and one special character.
+* Password rules are reflected in the OpenAPI documentation for registration endpoints.
+
+### Rate-Limiting
+
+* Authentication endpoints (`/auth/token`, `/auth/register`) are rate-limited to prevent brute-force attacks.
+* Default policy: **5 requests per minute per IP**.
+* Example usage:
+
+```bash
+# Multiple rapid requests exceeding limit will receive HTTP 429
+curl -X POST http://127.0.0.1:8000/auth/token -F "username=admin" -F "password=adminpass" -F "grant_type=password"
+```
+
+### HTTPS
+
+* It is strongly recommended to serve all endpoints over HTTPS in production to encrypt tokens and credentials in transit.
+
+### JWT Key Management
+
+* JWT tokens are signed using RSA keys.
+* Consider periodic rotation of JWT signing keys.
+* The platform provides a public JWKS endpoint (`/.well-known/jwks.json`) to allow clients to validate tokens after key rotation.
+
+---
+
+### ✅ Summary of Security Features
+
+* Strong password enforcement
+* Rate-limiting on sensitive endpoints
+* HTTPS for secure transport
+* Refresh token rotation and revocation
+* JWT s
+
 ### **5️⃣ Implementation Notes**
 
 1. **Database Table** – You should create an `audit_logs` table:

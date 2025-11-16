@@ -15,8 +15,16 @@ from app.core.utils import verify_code_challenge
 from app.crud.oauth_crud import consume_authorization_code, get_client_by_client_id
 from app.utils.audit import log_event
 from fastapi import Request
+from fastapi import Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# Limiter instance
+limiter = Limiter(key_func=get_remote_address)
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def get_db():
@@ -27,6 +35,7 @@ def get_db():
         db.close()
 
 @router.post("/token")
+@limiter.limit("5/minute") # requests per minute per IP
 def token_endpoint(
     grant_type: str = Form(...),
     code: str | None = Form(None),

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 import secrets
 import hashlib
+import os
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -11,6 +12,8 @@ from sqlalchemy.orm import Session as OrmSession
 from app.config import settings
 from app.models.rbac import UserSession
 from app.models.user import User
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -134,4 +137,26 @@ def revoke_session(session: UserSession, db: OrmSession):
     session.revoked = True
     session.is_active = False
     db.commit()
+
+def rotate_keys(private_key_path: str, public_key_path: str):
+
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key()
+
+    # Write new private key
+    with open(private_key_path, "wb") as f:
+        f.write(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+
+    # Write new public key
+    with open(public_key_path, "wb") as f:
+        f.write(public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ))
+
+    return True
 
