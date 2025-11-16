@@ -692,7 +692,8 @@ def log_event(user_id: int | None, event_type: str, details: str = "", request: 
 | GET        | `/admin/roles`               | Admin         | View and manage roles and permissions.                                                        |
 | POST       | `/admin/roles`               | Admin         | Create or update roles/permissions.                                                           |
 | GET        | `/admin/sessions`            | Admin         | View active sessions per user. Supports pagination & filtering.                               |
-| POST       | `/admin/sessions/deactivate` | Admin         | Deactivate a specific session.
+| POST       | `/admin/sessions/deactivate` | Admin         | Deactivate a specific session.                                                                |
+
 
 ---
 
@@ -700,32 +701,41 @@ def log_event(user_id: int | None, event_type: str, details: str = "", request: 
 
 ```mermaid
 flowchart TD
-    %% Users
-    A[User] -->|Register| B[/auth/register]
-    A -->|Login (Password Grant / Authorization Code)| C[/auth/token]
-    C -->|Access Token| D[/me]
-    C -->|Access Token| E[/userinfo]
-    C -->|Refresh Token| F[/auth/token/refresh]
-    C -->|Revoke Token| G[/auth/token/revoke]
-    D --> H[Database: Users Table]
-    E --> H
+    subgraph Public Endpoints
+        A1[POST /auth/register] -->|Creates user| A2[Return UserOut]
+        B1[POST /auth/token] -->|Password Grant or Authorization Code Grant| B2[Return access_token, refresh_token, id_token]
+    end
 
-    %% Admin
-    Admin[Admin User] -->|Access Token| I[/admin/dashboard]
-    I --> J[/admin/users]
-    I --> K[/admin/roles]
-    I --> L[/admin/sessions]
-    J --> M[Database: Users Table]
-    K --> N[Database: Roles & Permissions]
-    L --> O[Database: UserSessions]
+    subgraph Authenticated Endpoints
+        C1[POST /auth/token/refresh] -->|Rotates refresh token| C2[Return new access_token, refresh_token, id_token]
+        D1[POST /auth/logout] -->|Revoke current session| D2[Return message]
+        E1[GET /me] -->|Return current user info| E2[UserOut]
+        F1[GET /userinfo] -->|Return user claims| F2[UserOut]
+        G1[POST /auth/token/revoke] -->|Revoke token/session| G2[Return detail]
+    end
 
-    %% Logging
-    B --> P[AuditLog]
-    F --> P
-    G --> P
-    J --> P
-    K --> P
-    L --> P
+    subgraph Admin Endpoints
+        H1[GET /admin/dashboard] -->|Admin access only| H2[Welcome message]
+        I1[GET /admin/audit-logs] -->|Paginated logs| I2[Return logs]
+        J1[GET /admin/users] -->|List/manage users| J2[Return users list]
+        K1[POST /admin/users/deactivate] -->|Deactivate user| K2[Return status]
+        L1[GET /admin/roles] -->|Manage roles/permissions| L2[Return roles]
+        M1[POST /admin/roles] -->|Create/update roles| M2[Return status]
+        N1[GET /admin/sessions] -->|View active sessions| N2[Return sessions]
+        O1[POST /admin/sessions/deactivate] -->|Deactivate session| O2[Return status]
+    end
+
+    %% Connections
+    A2 --> B1
+    B2 --> C1
+    B2 --> D1
+    B2 --> E1
+    B2 --> F1
+    B2 --> G1
+    H2 --> I1
+    H2 --> J1
+    H2 --> L1
+    H2 --> N1
 ```
 
 ### Flow Explanation:
