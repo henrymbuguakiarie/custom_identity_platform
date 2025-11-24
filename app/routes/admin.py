@@ -3,7 +3,7 @@ from app.utils.auth import role_required
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
 from app.models.audit import AuditLog
-from app.utils.auth import role_required
+from app.utils.audit import log_event
 from typing import List, Optional
 from app.models.user import User
 from app.models.rbac import Role, UserSession
@@ -117,8 +117,7 @@ def deactivate_user(
     db.commit()
     db.refresh(user)
 
-    # Optionally log the admin action
-    from app.utils.audit import log_event
+    # Log the admin action
     log_event(user_id=current_user.id, event_type=f"deactivated user {user.username}")
 
     return {"detail": f"User '{user.username}' deactivated"}
