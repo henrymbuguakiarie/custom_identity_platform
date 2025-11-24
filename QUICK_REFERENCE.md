@@ -24,8 +24,17 @@ poetry run black app tests
 # Sort imports
 poetry run isort app tests
 
-# Check for issues
-poetry run flake8 app tests --max-line-length=120
+# Check for issues (uses .flake8 config if present)
+poetry run flake8 app tests
+```
+
+**Note:** For consistent linting, create a `.flake8` config file:
+```ini
+# .flake8
+[flake8]
+max-line-length = 120
+exclude = .git,__pycache__,.venv,alembic/versions
+ignore = E203,W503
 ```
 
 Expected: Most of 115 linting issues will be auto-fixed by black and isort

@@ -219,8 +219,18 @@ def verify_mfa(user: User, code: str) -> bool:
 **Add to .env:**
 ```env
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# ⚠️ CRITICAL: Generate separate keys for each environment (dev, staging, prod)
+# ⚠️ NEVER commit encryption keys to version control
+# ⚠️ Store production keys in a secure secrets manager
 ENCRYPTION_KEY=your-fernet-key-here
 ```
+
+**Security Notes:**
+- Generate unique encryption keys for each environment
+- Rotate keys periodically (every 90 days recommended)
+- Store production keys in AWS Secrets Manager or HashiCorp Vault
+- Never commit keys to version control
+- Document key rotation procedures
 
 **Estimated Time:** 3 hours
 
